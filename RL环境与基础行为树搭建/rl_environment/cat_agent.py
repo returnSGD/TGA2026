@@ -14,7 +14,7 @@ from .config import (
     INTENT_LIST, PERSONALITY_KEYS, PERSONALITY_DIM,
     EMOTION_DIM, PHYSICAL_DIM, ENV_FEATURE_DIM, RELATION_DIM,
     PLAYER_ACTION_DIM, MEMORY_EMBED_DIM, TOP_K_MEMORIES, SEQ_LEN,
-    CAT_CONFIGS, REWARDS,
+    CAT_CONFIGS, REWARDS, EVENT_IMPORTANCE_MID,
 )
 from .cat_state import CatState, MemoryItem, MemoryManager
 from .bt_core import BTStatus, Blackboard, BehaviorTree
@@ -97,11 +97,20 @@ class CatAgent:
 
     # ==================== 决策主循环 ====================
 
-    def decide_intent_with_rule(self, env) -> str:
+    def decide_intent_with_rule(self, env, epsilon: float = 0.05) -> str:
         """
         使用规则策略（if-else + 随机）选择意图。
         阶段一用于收集训练数据，后续替换为RL策略网络。
+
+        参数:
+            env: 沙盒环境
+            epsilon: ε-greedy 探索率（0.05 = 5%概率随机探索）
         """
+        # ── ε-greedy 探索：以 epsilon 概率随机选择意图（保证数据覆盖） ──
+        if random.random() < epsilon:
+            # 随机选择但受性格过滤器约束（用性格向量加权）
+            return self._exploratory_intent()
+
         s = self.state
 
         # 最高优先级：安全/应激行为
@@ -162,6 +171,24 @@ class CatAgent:
                 return "stare_at_window"
 
         return "idle_wander"
+
+    def _exploratory_intent(self) -> str:
+        """ε-greedy 探索：基于性格向量加权随机选择意图"""
+        # 对每个意图计算性格兼容度作为选择权重
+        weights = []
+        for intent in INTENT_LIST:
+            # 基础权重为1，加上性格矩阵中所有正偏置的加权和
+            w = 0.5  # 基础最小值
+            for j, trait in enumerate(PERSONALITY_KEYS):
+                p = self.state.personality_vector[j]
+                if p > 0.01:
+                    bias = self.filter._intent_trait_matrix.get(trait, {}).get(intent, 0.0)
+                    if bias > 0:
+                        w += bias * p
+            # 即使是负偏置的意图也保留极小概率
+            weights.append(max(0.1, w))
+
+        return random.choices(INTENT_LIST, weights=weights, k=1)[0]
 
     def process_interaction(self, env, player_action: str = "none",
                            force_intent: str = None) -> Dict:
@@ -408,19 +435,28 @@ class CatAgent:
 
     def _store_memory(self, intent: str, player_action: str,
                       bt_status: BTStatus, env):
-        """存储交互记忆"""
+        """存储交互记忆（使用 EVENT_IMPORTANCE_MID 计算重要性）"""
         success = bt_status == BTStatus.SUCCESS
 
-        # 计算重要性
-        importance = 1.0 + abs(self.state.emotion_vector.mean()) * 3.0
-        if success and intent in ("accept_petting", "approach_player"):
-            importance += 2.0
-        if intent in ("hide", "fearful_retreat", "hiss_warning"):
-            importance += 3.0
-        if self.state.trust_level > 60:
-            importance += 1.0 * (self.state.trust_level / 100)
+        # 根据事件类型从配置中获取基础重要性
+        event_type = self._classify_event(intent)
+        base_importance = EVENT_IMPORTANCE_MID.get(
+            event_type,
+            EVENT_IMPORTANCE_MID.get("daily_feed", 4.0)
+        )
 
-        importance += random.uniform(-0.5, 0.5)
+        # 根据意图和玩家行为微调
+        if success:
+            base_importance = min(10.0, base_importance * 1.2)
+        else:
+            base_importance = max(1.0, base_importance * 0.8)
+
+        # 高信任度时记忆稍有增值
+        if self.state.trust_level > 60:
+            base_importance += 0.5 * (self.state.trust_level / 100)
+
+        # 小幅随机抖动防止所有记忆分值完全相同
+        importance = base_importance + random.uniform(-0.5, 0.5)
 
         desc = f"{'成功' if success else '失败'}执行{intent}"
         if player_action != "none":
@@ -431,24 +467,36 @@ class CatAgent:
             timestamp=env.game_tick,
             importance=importance,
             embedding=np.random.randn(MEMORY_EMBED_DIM).astype(np.float32),
-            event_type=self._classify_event(intent),
+            event_type=event_type,
         )
         self.memory_mgr.add_memory(mem)
         self.interaction_count += 1
 
     def _classify_event(self, intent: str) -> str:
-        """分类事件类型"""
-        if intent in ("fearful_retreat", "hiss_warning", "hide"):
-            return "scare"
-        if intent in ("approach_player", "accept_petting", "ask_for_attention"):
-            return "pet"
+        """分类事件类型（映射到 EVENT_IMPORTANCE_BASE 的键）"""
+        if intent in ("fearful_retreat", "hiss_warning"):
+            return "trauma_triggered" if self.state.fear > 0.7 else "scared_by_player"
+        if intent == "hide":
+            return "trauma_triggered" if self.state.stress_level > 80 else "scared_by_player"
+        if intent == "approach_player":
+            return "first_voluntary_rub" if self.state.trust_level > 60 else "routine_explore"
+        if intent == "accept_petting":
+            return "first_pet_accepted" if len(self.trust_milestones_reached) <= 1 else "routine_pet_accepted"
+        if intent == "ask_for_attention":
+            return "first_voluntary_rub"
         if intent == "eat":
-            return "feed"
+            return "daily_feed"
+        if intent == "sleep":
+            return "routine_sleep"
         if intent in ("social_groom", "social_play"):
-            return "social"
+            return "first_grooming_together" if self.state.social_need > 0.6 else "social_bond_formed"
         if intent in ("curious_inspect", "play_with_toy"):
-            return "play"
-        return "daily"
+            return "routine_explore" if self.state.curiosity < 0.5 else "player_soothe_success"
+        if intent == "follow_player":
+            return "first_night_sleep_near_player" if self.state.trust_level > 70 else "routine_explore"
+        if intent == "stare_at_window":
+            return "stare_window"
+        return "idle_wander"
 
     # ==================== 数据收集相关 ====================
 

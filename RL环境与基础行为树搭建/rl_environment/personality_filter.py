@@ -13,6 +13,7 @@ import numpy as np
 from .config import (
     INTENT_LIST, PERSONALITY_KEYS, PERSONALITY_DIM,
     INTENT_PERSONALITY_MATRIX, PERSONALITY_BEHAVIOR_PARAMS,
+    PERSONALITY_FORBIDDEN_WORDS,
 )
 
 
@@ -119,20 +120,14 @@ class PersonalityFilter:
         return text, True
 
     def _get_forbidden_words(self, personality_vec: np.ndarray) -> List[str]:
-        """根据性格获取禁用词列表"""
+        """根据性格获取禁用词列表（从 config.PERSONALITY_FORBIDDEN_WORDS 读取）"""
         words = set()
         trait_threshold = 0.7
 
-        forbidden_map = {
-            "怯懦": ["最喜欢", "主动过来", "我不怕", "陪我玩", "快点", "过来啊"],
-            "傲娇": ["最喜欢你了", "我好想你", "陪我玩嘛", "好开心", "太棒了"],
-            "独立": ["陪陪我", "不要走", "好孤单", "我想你"],
-            "攻击性": ["爱你", "蹭蹭", "抱抱"],
-        }
-
         for j, trait in enumerate(PERSONALITY_KEYS):
             if personality_vec[j] > trait_threshold:
-                words.update(forbidden_map.get(trait, []))
+                trait_words = PERSONALITY_FORBIDDEN_WORDS.get(trait, [])
+                words.update(trait_words)
 
         return list(words)
 
