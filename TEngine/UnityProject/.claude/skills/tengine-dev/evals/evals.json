@@ -1,0 +1,311 @@
+{
+  "skill_name": "tengine-dev",
+  "evals": [
+    {
+      "id": 1,
+      "name": "ui-window-lifecycle",
+      "description": "验证 AI 能正确生成 UIWindow 骨架代码，使用正确的生命周期方法（ScriptGenerator/RegisterEvent/OnCreate/OnRefresh），通过 AddUIEvent 注册事件，不使用 OnClose/Coroutine/Resources.Load 等禁止模式。",
+      "prompt": "在 TEngine 中创建一个背包 UI（BagUI），显示物品列表，每个物品有图标和名称。点击物品弹出详情。请帮我写完整的 UIWindow 代码。",
+      "expected_patterns": [
+        "[Window(UILayer.UI",
+        "class BagUI : UIWindow",
+        "override void ScriptGenerator()",
+        "override void RegisterEvent()",
+        "override void OnCreate()",
+        "override void OnRefresh()",
+        "FindChildComponent",
+        "AddUIEvent"
+      ],
+      "forbidden_patterns": [
+        "void OnClose(",
+        "Coroutine",
+        "StartCoroutine",
+        "Resources.Load"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "event-interface-usage",
+      "description": "验证 AI 能正确诊断接口事件无响应问题，指出 GameEventHelper.Init() 未调用或 Source Generator 未生成是根因，不建议手动调用 RegisterListener。",
+      "prompt": "我的接口事件发送后没有任何响应，GameEvent.Get<IBattleEvent>() 返回的对象调用方法也没效果。我确认接口有 [EventInterface] 特性，实现类也注册了。可能是什么原因？",
+      "expected_patterns": [
+        "GameEventHelper.Init()",
+        "GameApp.Entrance",
+        "Source Generator",
+        "[EventInterface(EEventGroup"
+      ],
+      "forbidden_patterns": [
+        "UnRegisterAll",
+        "RegisterListener"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "resource-lifecycle",
+      "description": "验证 AI 能正确生成资源加载与释放代码：TextAsset 使用 LoadAssetAsync + UnloadAsset 配对，在 OnDestroy 释放，使用 CancellationToken，不使用 Resources.Load/Coroutine/LoadAssetAsync<Sprite>。",
+      "prompt": "我需要在热更代码中加载一个配置文件（TextAsset），解析后缓存数据。窗口关闭时释放资源。请给出完整的资源加载和释放模式代码。",
+      "expected_patterns": [
+        "LoadAssetAsync<TextAsset>",
+        "UnloadAsset",
+        "OnDestroy",
+        "CancellationToken"
+      ],
+      "forbidden_patterns": [
+        "Resources.Load",
+        "StartCoroutine",
+        "LoadAssetAsync<Sprite>"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "set-sprite-callback",
+      "description": "验证 AI 能正确使用 SetSprite 扩展方法，callback 类型为 Action<Image>（非 Action<Sprite>），不使用不存在的 SetSpriteAsync/ReleaseSprite。",
+      "prompt": "我需要在 TEngine 中加载一个 Sprite 到 Image 上，加载完成后执行一些逻辑。请给出使用 SetSprite 的代码。",
+      "expected_patterns": [
+        "SetSprite",
+        "Action<Image>",
+        "callback"
+      ],
+      "forbidden_patterns": [
+        "Action<Sprite>",
+        "SetSpriteAsync",
+        "ReleaseSprite"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "module-access",
+      "description": "验证 AI 通过 GameModule.Timer 和 GameModule.Scene 访问模块，使用正确的 AddTimer/LoadSceneAsync API，不使用 ModuleSystem.GetModule 或不存在的 GameModule.LoadScene。",
+      "prompt": "我需要使用 TEngine 的计时器模块和场景模块。请给出访问这两个模块并使用其 API 的代码示例。",
+      "expected_patterns": [
+        "GameModule.Timer",
+        "GameModule.Scene",
+        "AddTimer",
+        "LoadSceneAsync"
+      ],
+      "forbidden_patterns": [
+        "ModuleSystem.GetModule",
+        "GameModule.LoadScene"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "ui-widget-creation",
+      "description": "验证 AI 能正确使用 AdjustIconNum 和 CreateWidgetByPrefab 管理 Widget 列表，不使用 new UIWidget() 或 Instantiate 直接实例化。",
+      "prompt": "我需要在 UIWindow 中创建一个列表，每个列表项是一个 ItemWidget。请给出使用 AdjustIconNum 和 CreateWidgetByPrefab 的完整代码。",
+      "expected_patterns": [
+        "AdjustIconNum",
+        "CreateWidgetByPrefab",
+        "UIWidget",
+        "SetData"
+      ],
+      "forbidden_patterns": [
+        "new UIWidget",
+        "Instantiate"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "luban-config-access",
+      "description": "验证 AI 能正确通过 ConfigSystem.Instance.Tables 访问 Luban 配置，使用 Get(id) 查询和 DataList 遍历，不使用 GameModule.Resource/Resources.Load/new Tables 直接加载。",
+      "prompt": "我需要在热更代码中查询道具表（TbItem）中 id=1001 的道具配置，以及遍历所有稀有度为 Rare 的道具。请给出完整代码。",
+      "expected_patterns": [
+        "ConfigSystem.Instance",
+        "Tables",
+        "TbItem",
+        "Get(1001)",
+        "DataList"
+      ],
+      "forbidden_patterns": [
+        "GameModule.Resource",
+        "Resources.Load",
+        "new Tables"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "hotfix-entrance",
+      "description": "验证 AI 能正确实现 GameApp.Entrance：参数类型为 object[]，GameEventHelper.Init() 最先调用，objects[0] 强转为 List<Assembly>，不使用错误的签名或不存在的 GameApp_RegisterSystem。",
+      "prompt": "请写出 TEngine 热更入口 GameApp.Entrance 的完整正确实现，包括初始化顺序和参数类型。",
+      "expected_patterns": [
+        "Entrance(object[]",
+        "GameEventHelper.Init()",
+        "List<Assembly>",
+        "objects[0]",
+        "Utility.Unity.AddDestroyListener"
+      ],
+      "forbidden_patterns": [
+        "Entrance(Assembly[]",
+        "Entrance(List<Assembly>",
+        "GameApp_RegisterSystem"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "timer-destroy",
+      "description": "验证 AI 能正确在 UIWindow 中使用 Timer，在 OnDestroy 中调用 RemoveTimer，不使用 Coroutine/InvokeRepeating/ModuleSystem.GetModule。",
+      "prompt": "我在 UIWindow 中使用了 Timer 模块做倒计时，窗口关闭时需要停止计时器。请写出完整的计时器使用和销毁代码。",
+      "expected_patterns": [
+        "GameModule.Timer",
+        "AddTimer",
+        "RemoveTimer",
+        "OnDestroy"
+      ],
+      "forbidden_patterns": [
+        "StartCoroutine",
+        "InvokeRepeating",
+        "ModuleSystem.GetModule"
+      ]
+    },
+    {
+      "id": 10,
+      "name": "game-event-mgr-batch",
+      "description": "验证 AI 能正确为非 UI 类使用 GameEventMgr 批量管理事件监听，在 Dispose 中调用 Clear()，不使用 AddUIEvent/UnRegisterAll/GameEvent.Shutdown。",
+      "prompt": "我有一个非 UI 的 PlayerSystem 类，需要监听多个游戏事件，并在系统销毁时批量清理。请给出使用 GameEventMgr 的完整代码。",
+      "expected_patterns": [
+        "GameEventMgr",
+        "_eventMgr",
+        "AddEvent",
+        "Clear()",
+        "Dispose"
+      ],
+      "forbidden_patterns": [
+        "AddUIEvent",
+        "UnRegisterAll",
+        "GameEvent.Shutdown"
+      ]
+    },
+    {
+      "id": 11,
+      "name": "widget-async-creation",
+      "description": "验证 AI 能正确使用 CreateWidgetByPathAsync 异步创建 Widget，配合 await/UniTask，不使用同步的 CreateWidgetByPath、Instantiate 或 StartCoroutine。",
+      "prompt": "我需要在 UIWindow 的 OnCreate 中从资源路径异步创建一个 ItemWidget，并等待创建完成后刷新数据。请给出代码。",
+      "expected_patterns": [
+        "CreateWidgetByPathAsync",
+        "await",
+        "UniTask",
+        "UIWidget"
+      ],
+      "forbidden_patterns": [
+        "CreateWidgetByPath",
+        "Instantiate",
+        "StartCoroutine"
+      ]
+    },
+    {
+      "id": 12,
+      "name": "event-memory-leak",
+      "description": "验证 AI 能正确诊断 UIWindow 中事件内存泄漏问题，指出应在 RegisterEvent 中使用 AddUIEvent（自动清理），不建议使用 OnClose 或 UnRegisterAll 等不存在的方法。",
+      "prompt": "我在 UIWindow 的 OnCreate 中用 GameEvent.AddEventListener 注册了事件，但窗口关闭后发现回调仍然在触发，而且内存没有释放。这是什么问题，如何修复？",
+      "expected_patterns": [
+        "RegisterEvent",
+        "AddUIEvent",
+        "自动清理",
+        "RemoveAllUIEvent"
+      ],
+      "forbidden_patterns": [
+        "OnClose",
+        "UnRegisterAll"
+      ]
+    },
+    {
+      "id": 13,
+      "name": "scene-switch-resource",
+      "description": "验证 AI 能正确实现场景切换流程：CloseAll 关闭 UI，LoadSceneAsync 加载新场景，UnloadUnusedAssets 整理资源，不使用 SceneManager.LoadScene 或 Resources.UnloadUnusedAssets。",
+      "prompt": "我需要从主城场景切换到战斗场景，切换时关闭所有 UI 并整理资源。请给出完整的场景切换代码。",
+      "expected_patterns": [
+        "GameModule.UI.CloseAll",
+        "GameModule.Scene.LoadSceneAsync",
+        "UnloadUnusedAssets"
+      ],
+      "forbidden_patterns": [
+        "SceneManager.LoadScene",
+        "Resources.UnloadUnusedAssets"
+      ]
+    },
+    {
+      "id": 14,
+      "name": "mcp-create-ui-script",
+      "description": "验证 AI 能正确使用 MCP manage_script 工具创建 UIWindow C# 脚本，路径指向 HotFix/GameLogic/UI 目录，包含 [Window(] 特性，不使用 manage_asset 或 manage_gameobject 处理脚本。",
+      "prompt": "用 MCP 工具帮我创建一个 BattleMainUI 的 UIWindow C# 脚本，放在正确的路径下。",
+      "expected_patterns": [
+        "manage_script",
+        "action.*create",
+        "GameScripts/HotFix/GameLogic/UI",
+        "[Window("
+      ],
+      "forbidden_patterns": [
+        "manage_asset",
+        "manage_gameobject"
+      ]
+    },
+    {
+      "id": 15,
+      "name": "aot-generic-supplement",
+      "description": "验证 AI 能正确诊断 HybridCLR AOT 泛型缺失问题，指向 AOTGenericReferences 和 HybridCLR Generate 操作，不建议使用 dynamic 或 Emit 等不支持的特性。",
+      "prompt": "热更代码中使用了 UniTask<MyCustomData> 和 List<MyCustomData>，在真机上出现 ExecutionEngineException。如何修复？",
+      "expected_patterns": [
+        "AOT Generic References",
+        "AOTGenericReferences",
+        "HybridCLR",
+        "Generate"
+      ],
+      "forbidden_patterns": [
+        "dynamic",
+        "Emit"
+      ]
+    },
+    {
+      "id": 16,
+      "name": "scene-switch-full-flow",
+      "description": "验证 AI 能正确实现完整的场景切换与资源整理流程：先 CloseAll 关闭 UI，再 LoadSceneAsync 加载场景，最后 UnloadUnusedAssets 整理资源，不绕过框架使用 SceneManager.LoadScene 或 Resources.UnloadUnusedAssets。",
+      "prompt": "我需要实现从主城切换到战斗场景的完整流程，包括关闭所有当前 UI、加载战斗场景、整理旧场景资源，最后打开战斗主界面。请给出使用 TEngine 框架的完整异步代码。",
+      "expected_patterns": [
+        "GameModule.UI.CloseAll",
+        "GameModule.Scene.LoadSceneAsync",
+        "UnloadUnusedAssets",
+        "ShowUIAsync",
+        "await"
+      ],
+      "forbidden_patterns": [
+        "SceneManager.LoadScene",
+        "Resources.UnloadUnusedAssets",
+        "StartCoroutine"
+      ]
+    },
+    {
+      "id": 17,
+      "name": "dlc-multi-package-load",
+      "description": "验证 AI 能正确处理 DLC 多资源包场景：使用 packageName 参数加载 DLC 资源，使用 HasAsset 或 CheckLocationValid 进行前置检查，CreateResourceDownloader 传入 packageName，不遗漏 packageName 参数。",
+      "prompt": "游戏有一个 DLC 章节包（packageName=\"DLC_Chapter2\"），我需要先检查 DLC 资源是否已在本地，若没有则触发下载，下载完成后再加载 DLC 中的 Boss 预制体。请给出完整代码。",
+      "expected_patterns": [
+        "packageName",
+        "HasAsset",
+        "CreateResourceDownloader",
+        "LoadGameObjectAsync",
+        "BeginDownload"
+      ],
+      "forbidden_patterns": [
+        "LoadGameObjectAsync(\"BossPrefab\")"
+      ]
+    },
+    {
+      "id": 18,
+      "name": "mcp-create-material",
+      "description": "验证 AI 能正确使用 MCP manage_material 工具创建 URP 材质，使用正确的 URP Shader 名称（Universal Render Pipeline/Lit）和颜色属性（_BaseColor），不误用 manage_script 处理材质或使用 _Color 作为 URP 颜色属性。",
+      "prompt": "用 MCP 工具帮我为角色模型（HeroModel）创建一个蓝色的 URP Lit 材质，保存到 Assets/AssetRaw/Materials/ 目录，并赋给该模型。",
+      "expected_patterns": [
+        "manage_material",
+        "Universal Render Pipeline/Lit",
+        "_BaseColor",
+        "assign_material_to_renderer",
+        "HeroModel"
+      ],
+      "forbidden_patterns": [
+        "manage_script",
+        "\"_Color\"",
+        "Standard"
+      ]
+    }
+  ]
+}
