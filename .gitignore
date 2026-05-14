@@ -1,0 +1,110 @@
+# ========================
+# Unity Generated
+# ========================
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+UnityProject/ProjectSettings/CommonBurstAotSettings.json
+UnityProject/ProjectSettings/BurstAotSettings_StandaloneWindows.json
+
+# Unity auto-generated meta for folders we ignore
+UnityProject/Assets/Plugins/Editor/JetBrains*
+
+# ========================
+# IDE / Editor
+# ========================
+.vs/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ========================
+# OS Generated
+# ========================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# ========================
+# Python / ML (cat_control)
+# ========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.whl
+pip-log.txt
+pip-delete-this-directory.txt
+.venv/
+venv/
+ENV/
+env/
+*.onnx
+*.pt
+*.pth
+*.bin
+
+# Training data & outputs
+cat_control/training_data/
+cat_control/rl_clone/models/
+cat_control/tl_train/checkpoints/
+
+# ========================
+# TEngine 工具链
+# ========================
+Tools/Luban/
+Tools/Luban.ClientServer/
+Configs/.cache.meta
+GenerateDatas/
+Tools/FileServer/AssetRoot
+
+# GameEventSourceGenerator
+Tools/GameEventSourceGenerator/.idea
+Tools/GameEventSourceGenerator/GameEventAnalyzer/bin
+Tools/GameEventSourceGenerator/GameEventAnalyzer/obj
+Tools/GameEventSourceGenerator/SourceGenerator/bin
+Tools/GameEventSourceGenerator/SourceGenerator/obj
+
+# ========================
+# HybridCLR
+# ========================
+HybridCLRData/
+
+# ========================
+# 项目特定
+# ========================
+openspec/
